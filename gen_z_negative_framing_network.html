@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gen Z Negative Framing — Thematic Network</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700;1,9..40,300&family=Space+Mono:wght@400;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0c10;
+    color: #c8cdd5;
+    font-family: 'DM Sans', sans-serif;
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  #header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    padding: 20px 32px 16px;
+    background: linear-gradient(to bottom, #0a0c10 60%, transparent);
+    pointer-events: none;
+  }
+
+  #header h1 {
+    font-family: 'Space Mono', monospace;
+    font-size: 15px;
+    font-weight: 700;
+    color: #e4e8ee;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  #header .subtitle {
+    font-size: 12px;
+    color: #636b78;
+    margin-top: 4px;
+    font-weight: 300;
+  }
+
+  #chart { width: 100%; height: 100vh; }
+
+  #legend {
+    position: fixed;
+    bottom: 20px;
+    left: 32px;
+    z-index: 100;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    max-width: 700px;
+    pointer-events: auto;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #636b78;
+    cursor: pointer;
+    transition: color 0.2s;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .legend-item:hover { color: #e4e8ee; }
+  .legend-item.active { color: #e4e8ee; }
+
+  .legend-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: transform 0.2s;
+  }
+
+  .legend-item:hover .legend-dot { transform: scale(1.4); }
+
+  #source-legend {
+    position: fixed;
+    bottom: 20px;
+    right: 32px;
+    z-index: 100;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    max-width: 360px;
+    justify-content: flex-end;
+  }
+
+  .source-item {
+    font-size: 10px;
+    color: #3d4450;
+    font-family: 'Space Mono', monospace;
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+  .source-item:hover { color: #8a92a0; }
+
+  #tooltip {
+    position: fixed;
+    pointer-events: none;
+    background: #14171e;
+    border: 1px solid #2a2f3a;
+    border-radius: 6px;
+    padding: 12px 16px;
+    max-width: 380px;
+    font-size: 12px;
+    line-height: 1.5;
+    z-index: 200;
+    opacity: 0;
+    transition: opacity 0.15s;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+
+  #tooltip .tt-title {
+    font-weight: 500;
+    color: #e4e8ee;
+    margin-bottom: 6px;
+    font-size: 13px;
+  }
+
+  #tooltip .tt-source {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: #636b78;
+    margin-bottom: 4px;
+  }
+
+  #tooltip .tt-themes {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+  }
+
+  #tooltip .tt-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    color: #fff;
+    opacity: 0.85;
+  }
+
+  #stats {
+    position: fixed;
+    top: 20px;
+    right: 32px;
+    z-index: 100;
+    text-align: right;
+    pointer-events: none;
+  }
+
+  #stats .stat-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 36px;
+    font-weight: 700;
+    color: #e4e8ee;
+    line-height: 1;
+  }
+
+  #stats .stat-label {
+    font-size: 11px;
+    color: #636b78;
+    margin-top: 2px;
+  }
+
+  #stats .stat-sub {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: #4a5060;
+    margin-top: 8px;
+  }
+
+  #reset-btn {
+    position: fixed;
+    top: 80px;
+    right: 32px;
+    z-index: 100;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    padding: 6px 14px;
+    background: #1a1e28;
+    color: #636b78;
+    border: 1px solid #2a2f3a;
+    border-radius: 4px;
+    cursor: pointer;
+    display: none;
+    transition: all 0.2s;
+  }
+  #reset-btn:hover { color: #e4e8ee; border-color: #4a5060; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>Negative Characterisation of Gen Z in UK Media</h1>
+  <div class="subtitle">Thematic network of 102 negatively framed headlines across 285 articles · Click themes to isolate clusters</div>
+</div>
+
+<div id="stats">
+  <div class="stat-num">35.8%</div>
+  <div class="stat-label">of headlines negatively framed</div>
+  <div class="stat-sub">102 / 285 headlines</div>
+</div>
+
+<button id="reset-btn" onclick="resetFilter()">✕ Clear filter</button>
+
+<svg id="chart"></svg>
+
+<div id="legend"></div>
+<div id="source-legend"></div>
+<div id="tooltip"></div>
+
+<script>
+const themes = {
+  1: { name: "Can't handle basic skills", short: "Incompetent", color: "#e05252" },
+  2: { name: "Workplace fragility", short: "Fragile workers", color: "#e0a832" },
+  3: { name: "Emotionally fragile", short: "Snowflake", color: "#d67ce0" },
+  4: { name: "Arrested development", short: "Can't grow up", color: "#52b8e0" },
+  5: { name: "Financially naive", short: "Bad with money", color: "#52e088" },
+  6: { name: "Killing traditions", short: "Tradition killers", color: "#e07c52" },
+  7: { name: "Anti-social / screen-bound", short: "Anti-social", color: "#7c8be0" },
+  8: { name: "Morally reckless", short: "Reckless", color: "#e05298" },
+  9: { name: "Physically declining", short: "Unhealthy", color: "#8be052" }
+};
+
+const sourceColors = {
+  "Daily Mail (eClips Web)": "#6b7280",
+  "The Telegraph (eClips Web)": "#7c8ba0",
+  "The Times (eClips Web)": "#8090a4",
+  "Daily Star": "#6b7280",
+  "The Sun (eClips Web)": "#6b7280",
+  "The Independent (eClips Web)": "#8898ac",
+  "The i Paper (inews.co.uk)": "#8898ac",
+  "Daily Express": "#6b7280",
+  "The Guardian": "#8898ac",
+  "Sunday Mirror": "#6b7280",
+  "The Sunday Times (eClips Web)": "#7c8ba0",
+  "Financial Times": "#8898ac"
+};
+
+// Headline data: [title, source, [theme_ids]]
+const headlines = [
+  ["The French are in uproar about gen Z not lunching with colleagues", "The Guardian", [6]],
+  ["Gen Z has 'workplace anxiety'. Here's what employers need to do", "The Telegraph (eClips Web)", [2]],
+  ["My Gen Z colleagues are always on holiday - I'm sick of picking up the slack", "The i Paper (inews.co.uk)", [2]],
+  ["Two thirds of Gen Z office workers 'need' headphones to concentrate at work", "Daily Star", [2]],
+  ["Headphones essential for productivity among Gen Z in workplace", "Sunday Mirror", [2]],
+  ["Two thirds of Gen Z office workers can't function without headphones", "Daily Express", [2]],
+  ["Two thirds of Gen Z office workers can't work without headphones on", "The Sun (eClips Web)", [2]],
+  ["Gen Z's lonely lunches at odds with France's appetite for boozy meals", "The Times (eClips Web)", [6,7]],
+  ["Builder takes aim at Gen Z over crippling tradie shortage", "Daily Mail (eClips Web)", [2]],
+  ["Stuck with their parents and childless: how Gen Z can't grow up", "The Times (eClips Web)", [4]],
+  ["Something has gone terribly wrong for Gen Z women... social media monster", "Daily Mail (eClips Web)", [3]],
+  ["Generation Z struggle to identify old school car accessories", "Daily Mail (eClips Web)", [1]],
+  ["Gen Z are scared of DRIVING", "Daily Mail (eClips Web)", [1]],
+  ["Only 6% of Gen Z are 'very comfortable' making a phone call to a stranger", "Daily Mail (eClips Web)", [1,7]],
+  ["The classic car features Gen Z are baffled by", "Daily Mail (eClips Web)", [1]],
+  ["Great British fry up under threat as Gen Z want to replace it with kimchi", "Daily Star", [6]],
+  ["Gen Z ditch fried eggs in favour of bathing them in coffee and lime juice", "Daily Star", [6]],
+  ["Gen Z shocked to find out Wuthering Heights doesn't have happy ending", "Daily Mail (eClips Web)", [1]],
+  ["Gen Z get huge shock after discovering Wuthering Heights...", "Daily Mail (eClips Web)", [1]],
+  ["Moor misery! Gen Z get huge shock after discovering Wuthering Heights...", "Daily Mail (eClips Web)", [1]],
+  ["Why Gen Z are too dumb to read Wuthering Heights", "The Telegraph (eClips Web)", [1]],
+  ["Gen Z retirement home opens for 'burnt out' young adults", "Daily Mail (eClips Web)", [4]],
+  ["Household debt surges amid Gen Z borrowing binge", "The Telegraph (eClips Web)", [5]],
+  ["Flipping heck! Why Pancake Day is falling flat with Generation Z", "Daily Mail (eClips Web)", [6]],
+  ["Scrap beer tax & Gen Z will return to work, says Jeremy Clarkson", "The Sun (eClips Web)", [8]],
+  ["Scrap beer tax & Gen Z will return to work (duplicate)", "The Sun (eClips Web)", [8]],
+  ["Stop taxing beer and lure Gen Z off cannabis", "Daily Star", [8]],
+  ["The real reason Gen Z is off sex... 70% have less energy", "Daily Mail (eClips Web)", [9]],
+  ["Gen Z 'killing off holiday traditions' including airport pints", "Daily Star", [6]],
+  ["Gen Z humiliated as the first generation to be less intelligent", "Daily Mail (eClips Web)", [1,9]],
+  ["Pubs beg Gen Z punters to stop forming single file queues at bar", "Daily Star", [1]],
+  ["The tourist hotspots where Gen Z are most likely to ruin your holiday snaps", "Daily Mail (eClips Web)", [8]],
+  ["Classic office words and phrases Gen Z no longer understand", "Daily Mail (eClips Web)", [1]],
+  ["Gen Z have big retirement dreams but are failing to plan", "The Independent (eClips Web)", [5]],
+  ["Gen Z struggle to make friends with people with 'different views'", "The Times (eClips Web)", [3,7]],
+  ["Almost half of Gen Z resent online dating but don't know how else to meet someone", "The Sun (eClips Web)", [7]],
+  ["Gen Z 'resent' online dating but 'too embarrassed' to approach in person", "Daily Express", [7]],
+  ["Gen Z 'resent' online dating apps - but unsure how else to find love", "Sunday Mirror", [7]],
+  ["Fed up Gen Z 'resent' online dating - but can't stay off the apps", "Daily Star", [7]],
+  ["Gen Z are lonely: here's another point of view", "The Times (eClips Web)", [7]],
+  ["Move over Ed Miliband! How Gen Z make a pig's ear of the bacon butty", "Daily Mail (eClips Web)", [1]],
+  ["How Gen Z are turning debt into profit — on TikTok", "The Times (eClips Web)", [5]],
+  ["Gen Z would rather their bank gave them free coffee than a top interest rate", "Daily Mail (eClips Web)", [5]],
+  ["No sex please, we're Gen Z", "The Telegraph (eClips Web)", [7]],
+  ["Gen Z won't be happy; Dolce & Gabbana says alpha-male is back", "The Telegraph (eClips Web)", [3]],
+  ["Gen Z won't be happy... Dolce & Gabbana says alpha-male is back (dup)", "The Telegraph (eClips Web)", [3]],
+  ["Gen Z are terrified of ageing - at 69, I've found it liberating", "The i Paper (inews.co.uk)", [3]],
+  ["Red flag behaviour of Gen Z jobseekers in interviews: 'It's weird'", "Daily Express", [2]],
+  ["Gen Z most likely to take time off for stress", "The Telegraph (eClips Web)", [2]],
+  ["Gen Z really does have it that bad", "The Times (eClips Web)", [0]],
+  ["Gen Z sees jobs as short-term 'situationships'", "The Independent (eClips Web)", [4]],
+  ["Gen Z want to travel when they retire but are clueless about pension", "The Telegraph (eClips Web)", [5]],
+  ["Gen Z swaps home-cooked meals for takeout", "Daily Star", [6]],
+  ["Gen Z turn to takeaways as busy lifestyles leave little time", "Daily Express", [6]],
+  ["Time-poor Gen Z ditch home cooking for pricey takeaways", "The Sun (eClips Web)", [5,6]],
+  ["Gen Z 'fuelling criminal gangs by buying fake designer fashion'", "The Telegraph (eClips Web)", [8]],
+  ["Gen Z couples 'most likely to argue about finances and keep money secrets'", "The Independent (eClips Web)", [5]],
+  ["Gen Z give pubs the cold shoulder to use cryotherapy chambers", "The Times (eClips Web)", [6]],
+  ["Finance guru has a brutal message for 'brainwashed' Gen Z", "Daily Mail (eClips Web)", [5]],
+  ["Gen Z woman divides internet after winning lottery by rejecting $1 million", "Daily Mail (eClips Web)", [5]],
+  ["More gen Z men live with parents in this city than anywhere in the US", "The Guardian", [4]],
+  ["Nearly one in five Gen Z in favour of dictatorships", "The Telegraph (eClips Web)", [8]],
+  ["Gen Z thinks it has become more socially acceptable to drive while over limit", "The Independent (eClips Web)", [8]],
+  ["Gen Z most relaxed about drink-driving", "The Telegraph (eClips Web)", [8]],
+  ["Gen Z are more relaxed about drink-driving", "Daily Mail (eClips Web)", [8]],
+  ["Gen Z more relaxed about drink-driving than parents and grandparents", "The Times (eClips Web)", [8]],
+  ["More than half of Gen Z prefer playing online games to socialising", "The Sun (eClips Web)", [7]],
+  ["Furious passenger hurls profanities at two Gen Z flyers", "Daily Mail (eClips Web)", [8]],
+  ["Gen Z no longer watches live TV", "Daily Mail (eClips Web)", [6]],
+  ["Gen Z should just get married and have kids", "The Telegraph (eClips Web)", [4]],
+  ["I'm Gen Z and wear headphones at work - my boss thinks it's anti-social", "The i Paper (inews.co.uk)", [2,7]],
+  ["'Magic circle' law firm trains Gen Z students to deal with City stress", "The Telegraph (eClips Web)", [2,3]],
+  ["Snus warning against nicotine habit Gen Z are obsessed with", "The Sun (eClips Web)", [8]],
+  ["Resilience training for Gen Z is booming — and that's no bad thing", "The Sunday Times (eClips Web)", [2,3]],
+  ["Gym-obsessed Gen Z turning to underground dealers", "Daily Mail (eClips Web)", [8]],
+  ["Gen Z behind jump in use of oral nicotine pouches", "The Guardian", [8]],
+  ["Generation Snus: One in 25 Gen Z's now use highly addictive nicotine pouches", "Daily Mail (eClips Web)", [8]],
+  ["My Gen Z colleagues killed the Christmas party", "The i Paper (inews.co.uk)", [6]],
+  ["Gen Z recruits given resilience training by PwC", "The Telegraph (eClips Web)", [2,3]],
+  ["Gen Z recruits given resilience training to cope with working", "The Telegraph (eClips Web)", [2,3]],
+  ["PwC toughens up Gen Z graduates with 'resilience' training", "The Sunday Times (eClips Web)", [2,3]],
+  ["PwC: We're toughening up Gen Z graduates with 'resilience' training", "The Sunday Times (eClips Web)", [2,3]],
+  ["Christmas dinner distractions as nine in ten use tech at festive table", "Daily Express", [7]],
+  ["Gen Z really ARE snowflakes! Youngsters see world as 'scary place'", "Daily Mail (eClips Web)", [3]],
+  ["Truth behind the 'Gen Z' stare and why teens don't do smiley small talk", "Sunday Mirror", [7]],
+  ["'Sober but sick' Gen Z risk becoming 'left behind generation'", "Sunday Mirror", [9]],
+  ["Sweaty dancefloors? No thanks, we're Gen Z", "The Times (eClips Web)", [7]],
+  ["Only a third of Gen Z men can change a light bulb", "Daily Star", [1]],
+  ["Wellness-loving Gen Z are BIGGER than previous generations", "Daily Mail (eClips Web)", [9]],
+  ["Gen Z fatter than previous generations despite wellness fixation", "The Telegraph (eClips Web)", [9]],
+  ["Why Gen Z are 'at risk of being left behind'", "The Independent (eClips Web)", [9]],
+  ["My Gen Z team are incredibly defensive – they can't handle feedback", "The i Paper (inews.co.uk)", [2,3]],
+  ["Gen Z preparing for early retirement amid surge in mental health problems", "The Telegraph (eClips Web)", [2,9]],
+  ["Housing crisis pushing Gen Z into crypto and economic nihilism", "Financial Times", [5]],
+  ["Gen Z office survival guide: telephobia and get up early", "The Guardian", [1,2]],
+  ["Struggling for small talk? This class helps Gen Z be brave", "The Times (eClips Web)", [7]],
+  ["The night out that's helping Gen Z conquer small talk", "The Times (eClips Web)", [7]],
+  ["Negative stereotyping from older colleagues... reduced to tears", "Daily Mail (eClips Web)", [2]],
+  ["Should I try Gen Z 'quiet quitting'?", "The Sun (eClips Web)", [2]],
+  ["CEOs worry for Gen Z. The church can help", "The Sunday Times (eClips Web)", [3]],
+  ["Gen Z obsessed with the 'almost relationship'", "The Independent (eClips Web)", [7]],
+  ["The 94-year-old boulangerie on brink as Gen Z want 'food porn'", "Daily Mail (eClips Web)", [6]],
+  ["'A lost generation': Readers on why Gen Z are turning to the Bible", "The Independent (eClips Web)", [3]],
+];
+
+// Filter out the placeholder [0] entry
+const negHeadlines = headlines.filter(h => !(h[2].length === 1 && h[2][0] === 0));
+
+// Build nodes and links
+const nodes = [];
+const links = [];
+
+// Theme nodes
+Object.entries(themes).forEach(([id, t]) => {
+  const count = negHeadlines.filter(h => h[2].includes(+id)).length;
+  nodes.push({
+    id: `theme_${id}`,
+    type: "theme",
+    label: t.short,
+    fullName: t.name,
+    color: t.color,
+    count: count,
+    themeId: +id
+  });
+});
+
+// Headline nodes
+negHeadlines.forEach((h, i) => {
+  const primaryTheme = h[2][0];
+  nodes.push({
+    id: `h_${i}`,
+    type: "headline",
+    label: h[0],
+    source: h[1],
+    color: themes[primaryTheme].color,
+    themeIds: h[2]
+  });
+
+  h[2].forEach(tid => {
+    links.push({
+      source: `h_${i}`,
+      target: `theme_${tid}`,
+      themeId: tid
+    });
+  });
+});
+
+// Setup SVG
+const width = window.innerWidth;
+const height = window.innerHeight;
+
+const svg = d3.select("#chart")
+  .attr("width", width)
+  .attr("height", height);
+
+// Background grain
+const defs = svg.append("defs");
+const filter = defs.append("filter").attr("id", "grain");
+filter.append("feTurbulence")
+  .attr("type", "fractalNoise")
+  .attr("baseFrequency", 0.65)
+  .attr("numOctaves", 3)
+  .attr("stitchTiles", "stitch");
+filter.append("feColorMatrix").attr("type", "saturate").attr("values", 0);
+filter.append("feBlend").attr("in", "SourceGraphic").attr("mode", "multiply");
+
+svg.append("rect")
+  .attr("width", width)
+  .attr("height", height)
+  .attr("fill", "#0a0c10");
+
+const g = svg.append("g");
+
+// Zoom
+const zoom = d3.zoom()
+  .scaleExtent([0.3, 4])
+  .on("zoom", (e) => g.attr("transform", e.transform));
+svg.call(zoom);
+
+// Simulation
+const simulation = d3.forceSimulation(nodes)
+  .force("link", d3.forceLink(links).id(d => d.id).distance(d => {
+    return 60;
+  }).strength(0.7))
+  .force("charge", d3.forceManyBody().strength(d => d.type === "theme" ? -400 : -30))
+  .force("center", d3.forceCenter(width / 2, height / 2))
+  .force("collision", d3.forceCollide().radius(d => d.type === "theme" ? 36 : 7))
+  .force("x", d3.forceX(width / 2).strength(0.03))
+  .force("y", d3.forceY(height / 2).strength(0.03));
+
+// Links
+const linkG = g.append("g");
+const link = linkG.selectAll("line")
+  .data(links)
+  .join("line")
+  .attr("stroke", d => themes[d.themeId].color)
+  .attr("stroke-opacity", 0.08)
+  .attr("stroke-width", 0.8);
+
+// Headline nodes
+const headlineNodes = g.append("g").selectAll("circle")
+  .data(nodes.filter(d => d.type === "headline"))
+  .join("circle")
+  .attr("r", 4)
+  .attr("fill", d => d.color)
+  .attr("fill-opacity", 0.5)
+  .attr("stroke", d => d.color)
+  .attr("stroke-width", 0.5)
+  .attr("stroke-opacity", 0.3)
+  .style("cursor", "pointer")
+  .on("mouseenter", showTooltip)
+  .on("mouseleave", hideTooltip)
+  .call(d3.drag()
+    .on("start", dragStart)
+    .on("drag", dragging)
+    .on("end", dragEnd));
+
+// Theme nodes - glow
+const themeGlow = g.append("g").selectAll("circle")
+  .data(nodes.filter(d => d.type === "theme"))
+  .join("circle")
+  .attr("r", d => 20 + d.count * 0.8)
+  .attr("fill", d => d.color)
+  .attr("fill-opacity", 0.06)
+  .attr("stroke", "none");
+
+// Theme nodes - core
+const themeNodes = g.append("g").selectAll("circle")
+  .data(nodes.filter(d => d.type === "theme"))
+  .join("circle")
+  .attr("r", d => 14 + d.count * 0.5)
+  .attr("fill", d => d.color)
+  .attr("fill-opacity", 0.15)
+  .attr("stroke", d => d.color)
+  .attr("stroke-width", 1.5)
+  .attr("stroke-opacity", 0.6)
+  .style("cursor", "pointer")
+  .on("mouseenter", showThemeTooltip)
+  .on("mouseleave", hideTooltip)
+  .on("click", filterByTheme);
+
+// Theme labels
+const themeLabels = g.append("g").selectAll("text")
+  .data(nodes.filter(d => d.type === "theme"))
+  .join("text")
+  .text(d => d.label)
+  .attr("font-family", "'Space Mono', monospace")
+  .attr("font-size", "9px")
+  .attr("fill", d => d.color)
+  .attr("fill-opacity", 0.9)
+  .attr("text-anchor", "middle")
+  .attr("dy", d => -(18 + d.count * 0.5))
+  .style("pointer-events", "none")
+  .style("text-transform", "uppercase")
+  .style("letter-spacing", "0.5px");
+
+// Count labels on theme nodes
+const countLabels = g.append("g").selectAll("text")
+  .data(nodes.filter(d => d.type === "theme"))
+  .join("text")
+  .text(d => d.count)
+  .attr("font-family", "'Space Mono', monospace")
+  .attr("font-size", "11px")
+  .attr("font-weight", "700")
+  .attr("fill", d => d.color)
+  .attr("fill-opacity", 0.8)
+  .attr("text-anchor", "middle")
+  .attr("dy", "4px")
+  .style("pointer-events", "none");
+
+// Simulation tick
+simulation.on("tick", () => {
+  link
+    .attr("x1", d => d.source.x)
+    .attr("y1", d => d.source.y)
+    .attr("x2", d => d.target.x)
+    .attr("y2", d => d.target.y);
+
+  headlineNodes
+    .attr("cx", d => d.x)
+    .attr("cy", d => d.y);
+
+  themeGlow
+    .attr("cx", d => d.x)
+    .attr("cy", d => d.y);
+
+  themeNodes
+    .attr("cx", d => d.x)
+    .attr("cy", d => d.y);
+
+  themeLabels
+    .attr("x", d => d.x)
+    .attr("y", d => d.y);
+
+  countLabels
+    .attr("x", d => d.x)
+    .attr("y", d => d.y);
+});
+
+// Drag
+function dragStart(event, d) {
+  if (!event.active) simulation.alphaTarget(0.3).restart();
+  d.fx = d.x; d.fy = d.y;
+}
+function dragging(event, d) { d.fx = event.x; d.fy = event.y; }
+function dragEnd(event, d) {
+  if (!event.active) simulation.alphaTarget(0);
+  d.fx = null; d.fy = null;
+}
+
+// Tooltip
+const tooltip = document.getElementById("tooltip");
+
+function showTooltip(event, d) {
+  const themeTags = d.themeIds.map(tid =>
+    `<span class="tt-tag" style="background:${themes[tid].color}33; color:${themes[tid].color}">${themes[tid].short}</span>`
+  ).join("");
+
+  tooltip.innerHTML = `
+    <div class="tt-source">${d.source}</div>
+    <div class="tt-title">${d.label}</div>
+    <div class="tt-themes">${themeTags}</div>
+  `;
+  tooltip.style.opacity = 1;
+  positionTooltip(event);
+
+  // Highlight connected
+  const connected = new Set(d.themeIds.map(t => `theme_${t}`));
+  headlineNodes.attr("fill-opacity", n => n.id === d.id ? 0.9 : 0.15);
+  themeNodes.attr("fill-opacity", n => connected.has(n.id) ? 0.3 : 0.05);
+  themeGlow.attr("fill-opacity", n => connected.has(n.id) ? 0.1 : 0.02);
+  link.attr("stroke-opacity", l => l.source.id === d.id || l.target.id === d.id ? 0.3 : 0.02);
+}
+
+function showThemeTooltip(event, d) {
+  const count = negHeadlines.filter(h => h[2].includes(d.themeId)).length;
+  const pct = ((count / 285) * 100).toFixed(1);
+  tooltip.innerHTML = `
+    <div class="tt-source">${count} headlines · ${pct}% of dataset</div>
+    <div class="tt-title">${d.fullName}</div>
+  `;
+  tooltip.style.opacity = 1;
+  positionTooltip(event);
+
+  // Highlight cluster
+  const clusterHeadlines = new Set(
+    negHeadlines.map((h, i) => h[2].includes(d.themeId) ? `h_${i}` : null).filter(Boolean)
+  );
+  headlineNodes.attr("fill-opacity", n => clusterHeadlines.has(n.id) ? 0.8 : 0.08);
+  themeNodes.attr("fill-opacity", n => n.id === d.id ? 0.3 : 0.05);
+  themeGlow.attr("fill-opacity", n => n.id === d.id ? 0.1 : 0.02);
+  link.attr("stroke-opacity", l => {
+    const src = typeof l.source === 'object' ? l.source.id : l.source;
+    return clusterHeadlines.has(src) && l.themeId === d.themeId ? 0.25 : 0.02;
+  });
+}
+
+function positionTooltip(event) {
+  let x = event.clientX + 16;
+  let y = event.clientY - 10;
+  if (x + 400 > width) x = event.clientX - 400;
+  if (y + 120 > height) y = event.clientY - 120;
+  tooltip.style.left = x + "px";
+  tooltip.style.top = y + "px";
+}
+
+function hideTooltip() {
+  tooltip.style.opacity = 0;
+  if (!activeFilter) {
+    headlineNodes.attr("fill-opacity", 0.5);
+    themeNodes.attr("fill-opacity", 0.15);
+    themeGlow.attr("fill-opacity", 0.06);
+    link.attr("stroke-opacity", 0.08);
+  }
+}
+
+// Filter by theme click
+let activeFilter = null;
+
+function filterByTheme(event, d) {
+  if (activeFilter === d.themeId) {
+    resetFilter();
+    return;
+  }
+  activeFilter = d.themeId;
+  document.getElementById("reset-btn").style.display = "block";
+
+  const clusterHeadlines = new Set(
+    negHeadlines.map((h, i) => h[2].includes(d.themeId) ? `h_${i}` : null).filter(Boolean)
+  );
+
+  headlineNodes
+    .attr("fill-opacity", n => clusterHeadlines.has(n.id) ? 0.85 : 0.04)
+    .attr("r", n => clusterHeadlines.has(n.id) ? 5 : 3);
+  themeNodes.attr("fill-opacity", n => n.themeId === d.themeId ? 0.35 : 0.03);
+  themeGlow.attr("fill-opacity", n => n.themeId === d.themeId ? 0.12 : 0.01);
+  themeLabels.attr("fill-opacity", n => n.themeId === d.themeId ? 1 : 0.2);
+  countLabels.attr("fill-opacity", n => n.themeId === d.themeId ? 1 : 0.15);
+  link.attr("stroke-opacity", l => {
+    const src = typeof l.source === 'object' ? l.source.id : l.source;
+    return clusterHeadlines.has(src) && l.themeId === d.themeId ? 0.3 : 0.01;
+  });
+
+  // Update legend
+  document.querySelectorAll('.legend-item').forEach(el => {
+    el.classList.toggle('active', +el.dataset.theme === d.themeId);
+  });
+}
+
+function resetFilter() {
+  activeFilter = null;
+  document.getElementById("reset-btn").style.display = "none";
+  headlineNodes.attr("fill-opacity", 0.5).attr("r", 4);
+  themeNodes.attr("fill-opacity", 0.15);
+  themeGlow.attr("fill-opacity", 0.06);
+  themeLabels.attr("fill-opacity", 0.9);
+  countLabels.attr("fill-opacity", 0.8);
+  link.attr("stroke-opacity", 0.08);
+  document.querySelectorAll('.legend-item').forEach(el => el.classList.remove('active'));
+}
+window.resetFilter = resetFilter;
+
+// Build legend
+const legend = document.getElementById("legend");
+Object.entries(themes).forEach(([id, t]) => {
+  const count = negHeadlines.filter(h => h[2].includes(+id)).length;
+  const item = document.createElement("div");
+  item.className = "legend-item";
+  item.dataset.theme = id;
+  item.innerHTML = `<div class="legend-dot" style="background:${t.color}"></div>${t.short} (${count})`;
+  item.addEventListener("click", () => {
+    const themeNode = nodes.find(n => n.id === `theme_${id}`);
+    if (themeNode) filterByTheme(null, themeNode);
+  });
+  legend.appendChild(item);
+});
+
+// Source legend
+const sourceLegend = document.getElementById("source-legend");
+const sourceCounts = {};
+negHeadlines.forEach(h => { sourceCounts[h[1]] = (sourceCounts[h[1]] || 0) + 1; });
+Object.entries(sourceCounts)
+  .sort((a, b) => b[1] - a[1])
+  .slice(0, 8)
+  .forEach(([source, count]) => {
+    const item = document.createElement("div");
+    item.className = "source-item";
+    item.textContent = `${source.replace(' (eClips Web)', '')} (${count})`;
+    sourceLegend.appendChild(item);
+  });
+
+// Initial zoom to fit
+setTimeout(() => {
+  svg.transition().duration(800).call(
+    zoom.transform,
+    d3.zoomIdentity.translate(width * 0.05, height * 0.05).scale(0.9)
+  );
+}, 500);
+</script>
+
+</body>
+</html>
